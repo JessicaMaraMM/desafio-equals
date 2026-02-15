@@ -8,7 +8,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class SaleImportService {
@@ -22,14 +25,17 @@ public class SaleImportService {
     }
 
     public ImportResult importFile(MultipartFile file) {
+        // Validação do arquivo
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Arquivo vazio ou não enviado.");
         }
 
         int totalLines = 0;
         int detailLines = 0;
-        int saved = 0;
         int ignored = 0;
+        int invalid = 0;
+
+        List<Sale> toSave = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
@@ -38,35 +44,84 @@ public class SaleImportService {
             while ((line = reader.readLine()) != null) {
                 totalLines++;
 
-                // ignora linhas vazias
                 if (line.trim().isEmpty()) {
                     ignored++;
                     continue;
                 }
 
-                // tipo do registro é o 1º caractere (header=0, detalhe=1, trailer=9)
                 char recordType = line.charAt(0);
 
-                if (recordType == '1') {
-                    detailLines++;
-
-                    Sale sale = saleParser.parse(line);
-                    saleRepository.save(sale);
-                    saved++;
-
-                } else {
-                    // header (0) e trailer (9) a gente ignora por enquanto
+                if (recordType != '1') {
                     ignored++;
+                    continue;
+                }
+
+                detailLines++;
+
+                // Validação de tamanho mínimo
+                int minLength = 530;
+                if (line.length() < minLength) {
+                    invalid++;
+                    continue;
+                }
+
+                // Pparse + validações de campos obrigatórios
+                try {
+                    Sale sale = saleParser.parse(line);
+                    validateSale(sale);
+                    toSave.add(sale);
+                } catch (Exception e) {
+                    invalid++;
                 }
             }
 
+            saleRepository.saveAll(toSave);
+
         } catch (Exception e) {
-            throw new RuntimeException("Falha ao ler/importar o arquivo: " + e.getMessage(), e);
+            throw new RuntimeException("Erro ao ler/importar o arquivo: " + e.getMessage(), e);
         }
 
-        return new ImportResult(totalLines, detailLines, saved, ignored);
+        return new ImportResult(totalLines, detailLines, toSave.size(), ignored, invalid);
     }
 
-    public record ImportResult(int totalLines, int detailLines, int saved, int ignored) {
+    private void validateSale(Sale sale) {
+        if (sale == null)
+            throw new IllegalArgumentException("Venda nula após parse.");
+
+        if (sale.getEstablishmentCode() == null || sale.getEstablishmentCode().trim().isEmpty()) {
+            throw new IllegalArgumentException("establishmentCode obrigatório.");
+        }
+
+        if (sale.getEventDate() == null) {
+            throw new IllegalArgumentException("eventDate obrigatório.");
+        }
+
+        if (sale.getTotalAmount() == null) {
+            throw new IllegalArgumentException("totalAmount obrigatório.");
+        }
+
+        if (sale.getTotalAmount().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("totalAmount não pode ser negativo.");
+        }
+
+        if (sale.getTransactionCode() == null || sale.getTransactionCode().trim().isEmpty()) {
+            throw new IllegalArgumentException("transactionCode obrigatório.");
+        }
+
+        if (sale.getTransactionCode().trim().length() != 32) {
+            throw new IllegalArgumentException("transactionCode deve ter 32 caracteres.");
+        }
+
+        if (sale.getNetAmount() != null && sale.getNetAmount().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("netAmount não pode ser negativo.");
+        }
+    }
+
+    public record ImportResult(
+            int totalLines,
+            int detailLines,
+            int saved,
+            int ignored,
+            int invalid) {
     }
 }

@@ -2,8 +2,10 @@ package com.equals.desafio.controller;
 
 import com.equals.desafio.domain.Sale;
 import com.equals.desafio.repository.SaleRepository;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -22,7 +24,19 @@ public class SaleController {
     }
 
     @GetMapping
-    public List<Sale> list() {
+    public List<Sale> list(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
+
+        if (start != null && end != null) {
+            return saleRepository.findByEventDateBetween(start, end);
+        }
+        if (start != null) {
+            return saleRepository.findByEventDateGreaterThanEqual(start);
+        }
+        if (end != null) {
+            return saleRepository.findByEventDateLessThanEqual(end);
+        }
         return saleRepository.findAll();
     }
 }
