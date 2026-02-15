@@ -1,7 +1,7 @@
 package com.equals.desafio.controller;
 
 import com.equals.desafio.domain.Sale;
-import com.equals.desafio.service.SaleService;
+import com.equals.desafio.repository.SaleRepository;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,19 +10,19 @@ import java.util.List;
 @RequestMapping("/sales")
 public class SaleController {
 
-    private final SaleService saleService;
+    private final SaleRepository saleRepository;
 
-    public SaleController(SaleService saleService) {
-        this.saleService = saleService;
+    public SaleController(SaleRepository saleRepository) {
+        this.saleRepository = saleRepository;
     }
 
     @PostMapping
     public Sale create(@RequestBody Sale sale) {
-        return saleService.save(sale);
+        return saleRepository.save(sale);
     }
 
     @GetMapping
     public List<Sale> list() {
-        return saleService.findAll();
+        return saleRepository.findAll();
     }
 }
