@@ -1,6 +1,7 @@
 package com.equals.desafio.service;
 
 import com.equals.desafio.domain.Sale;
+import com.equals.desafio.parser.SaleLayout;
 import com.equals.desafio.parser.SaleParser;
 import com.equals.desafio.repository.SaleRepository;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,8 @@ import java.util.List;
 @Service
 public class SaleImportService {
 
+    private static final int MAX_ERRORS_RETURNED = 10;
+
     private final SaleParser saleParser;
     private final SaleRepository saleRepository;
 
@@ -25,7 +28,7 @@ public class SaleImportService {
     }
 
     public ImportResult importFile(MultipartFile file) {
-        // Validação do arquivo
+
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Arquivo vazio ou não enviado.");
         }
@@ -36,12 +39,16 @@ public class SaleImportService {
         int invalid = 0;
 
         List<Sale> toSave = new ArrayList<>();
+        List<ImportError> errors = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
 
             String line;
+            int lineNumber = 0;
+
             while ((line = reader.readLine()) != null) {
+                lineNumber++;
                 totalLines++;
 
                 if (line.trim().isEmpty()) {
@@ -50,28 +57,29 @@ public class SaleImportService {
                 }
 
                 char recordType = line.charAt(0);
-
                 if (recordType != '1') {
                     ignored++;
                     continue;
                 }
 
+                // Encontrou uma linha de detalhe (tipo 1)
                 detailLines++;
 
                 // Validação de tamanho mínimo
-                int minLength = 530;
-                if (line.length() < minLength) {
+                if (line.length() < SaleLayout.DETAIL_MIN_LENGTH) {
                     invalid++;
+                    addError(errors, lineNumber,
+                            "Linha menor que o tamanho mínimo (" + SaleLayout.DETAIL_MIN_LENGTH + ").");
                     continue;
                 }
 
-                // Pparse + validações de campos obrigatórios
                 try {
                     Sale sale = saleParser.parse(line);
                     validateSale(sale);
                     toSave.add(sale);
                 } catch (Exception e) {
                     invalid++;
+                    addError(errors, lineNumber, e.getMessage());
                 }
             }
 
@@ -81,7 +89,18 @@ public class SaleImportService {
             throw new RuntimeException("Erro ao ler/importar o arquivo: " + e.getMessage(), e);
         }
 
-        return new ImportResult(totalLines, detailLines, toSave.size(), ignored, invalid);
+        return new ImportResult(totalLines, detailLines, toSave.size(), ignored, invalid, errors);
+    }
+
+    private void addError(List<ImportError> errors, int lineNumber, String reason) {
+        if (errors.size() >= MAX_ERRORS_RETURNED)
+            return;
+
+        String safeReason = (reason == null || reason.isBlank())
+                ? "Erro desconhecido."
+                : reason;
+
+        errors.add(new ImportError(lineNumber, safeReason));
     }
 
     private void validateSale(Sale sale) {
@@ -117,11 +136,15 @@ public class SaleImportService {
         }
     }
 
+    public record ImportError(int line, String reason) {
+    }
+
     public record ImportResult(
             int totalLines,
             int detailLines,
             int saved,
             int ignored,
-            int invalid) {
+            int invalid,
+            List<ImportError> errors) {
     }
 }
