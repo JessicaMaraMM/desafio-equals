@@ -47,27 +47,26 @@ docker compose up -d
 
 O banco PostgreSQL ficará disponível em:
 
-Host: localhost
-Porta: 5433
-Database: equals
-Usuário: equals
-Senha: equals
+- Host: localhost
+- Porta: 5433
+- Database: equals
+- Usuário: equals
+- Senha: equals
 
 ### 2. Rodar Backend
 
 Na pasta backend:
 
-Windows:
-mvnw spring-boot:run
-
-Mac/Linux:
 ./mvnw spring-boot:run
 
 A API ficará disponível em:
 http://localhost:8080
 
-### 3. Rodar Frontend
+### 4. Como rodar os testes
 
+./mvnw test
+
+### 5. Rodar Frontend
 
 Na pasta frontend:
 
@@ -79,7 +78,6 @@ http://localhost:5174
 
 ## Endpoints Principais
 
-
 ### Importação
 
 POST /imports
@@ -88,6 +86,7 @@ Recebe arquivo .txt via multipart/form-data.
 
 Retorna resumo do processamento:
 
+```json
 {
   "totalLines": 127,
   "detailLines": 125,
@@ -96,7 +95,7 @@ Retorna resumo do processamento:
   "invalid": 0,
   "errors": []
 }
-
+```
 
 ### Filtro por período
 
