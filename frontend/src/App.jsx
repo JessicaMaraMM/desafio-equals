@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function App() {
   const API = "http://localhost:8080";
@@ -8,15 +8,36 @@ export default function App() {
   const [sales, setSales] = useState([]);
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    fetchSales();
-  }, []);
+  async function parseResponse(response) {
+    const contentType = response.headers.get("content-type") || "";
+    const isJson = contentType.includes("application/json");
+
+    let payload;
+
+    if (isJson) {
+      payload = await response.json();
+    } else {
+      payload = await response.text();
+    }
+
+    if (!response.ok) {
+      const message =
+        (typeof payload === "object" && payload?.error) ||
+        (typeof payload === "string" && payload.trim()) ||
+        `Falha na requisição (${response.status})`;
+
+      throw new Error(message);
+    }
+
+    return payload;
+  }
 
   async function fetchSales(params = "") {
     const response = await fetch(`${API}/sales${params}`);
-    const data = await response.json();
-    setSales(data);
+    const data = await parseResponse(response);
+    setSales(Array.isArray(data) ? data : []);
   }
 
   async function handleImport() {
@@ -25,40 +46,52 @@ export default function App() {
       return;
     }
 
+    setError("");
+
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch(`${API}/imports`, {
-      method: "POST",
-      body: formData,
-    });
+    try {
+      const response = await fetch(`${API}/imports`, {
+        method: "POST",
+        body: formData,
+      });
 
-    const data = await response.json();
-    setResult(data);
-
-    fetchSales();
+      const data = await parseResponse(response);
+      setResult(data);
+      await fetchSales();
+    } catch (err) {
+      setError(err.message || "Erro ao importar arquivo.");
+    }
   }
 
   async function handleFilter() {
+
     const params = new URLSearchParams();
     if (start) params.append("start", start);
     if (end) params.append("end", end);
 
     const query = params.toString() ? `?${params.toString()}` : "";
     fetchSales(query);
+
+    try {
+      await fetchSales(query);
+    } catch (err) {
+      setError(err.message || "Erro ao filtrar vendas.");
+    }
   }
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Relatório de Vendas</h1>
 
+      {error && <p style={{ color: "red" }}>{error}</p>}
+
       <h2>Importar Arquivo</h2>
       <input type="file" onChange={(e) => setFile(e.target.files[0])} />
       <button onClick={handleImport}>Importar</button>
 
-      {result && (
-        <pre>{JSON.stringify(result, null, 2)}</pre>
-      )}
+      {result && <pre>{JSON.stringify(result, null, 2)}</pre>}
 
       <hr />
 
@@ -70,6 +103,7 @@ export default function App() {
       <hr />
 
       <h2>Vendas</h2>
+      <button onClick={() => fetchSales().catch((err) => setError(err.message || "Erro ao carregar vendas."))}>Atualizar</button>
       <p>Total: {sales.length}</p>
 
       <table border="1" cellPadding="5">
@@ -94,7 +128,7 @@ export default function App() {
               <td>
                 {Number(sale.totalAmount).toLocaleString("pt-BR", {
                   minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
+                  maximumFractionDigits: 2,
                 })}
               </td>
             </tr>
