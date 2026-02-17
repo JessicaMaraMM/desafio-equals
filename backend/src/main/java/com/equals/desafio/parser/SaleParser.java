@@ -14,15 +14,14 @@ public class SaleParser {
     private static final DateTimeFormatter DATE_YYYYMMDD = DateTimeFormatter.BASIC_ISO_DATE;
     private static final DateTimeFormatter TIME_HHMMSS = DateTimeFormatter.ofPattern("HHmmss");
 
-    private static final int DETAIL_MIN_LENGTH = 530;
-
     public Sale parse(String line) {
 
-        if (line == null || line.length() < DETAIL_MIN_LENGTH) {
-            throw new IllegalArgumentException(
-                    "Linha inválida. Tamanho esperado mínimo: " + DETAIL_MIN_LENGTH +
-                            ". Tamanho recebido: " + (line == null ? 0 : line.length())
-            );
+        if (line == null) {
+            throw new IllegalArgumentException("Linha inválida: null");
+        }
+
+        if (line.length() < SaleLayout.DETAIL_MIN_LENGTH) {
+            line = padRight(line, SaleLayout.DETAIL_MIN_LENGTH);
         }
 
         String recordType = cut(line, 1, 1);
@@ -42,7 +41,7 @@ public class SaleParser {
 
         LocalTime eventTime = eventTimeStr.trim().isEmpty()
                 ? null
-                : LocalTime.parse(eventTimeStr, TIME_HHMMSS);
+                : LocalTime.parse(eventTimeStr.trim(), TIME_HHMMSS);
 
         BigDecimal totalAmount = parseMoney13(totalAmountStr);
         BigDecimal netAmount = parseMoney13(netAmountStr);
@@ -66,10 +65,32 @@ public class SaleParser {
     }
 
     private BigDecimal parseMoney13(String raw) {
+        if (raw == null) {
+            return BigDecimal.ZERO;
+        }
+
         String digits = raw.trim();
+
         if (digits.isEmpty()) {
             return BigDecimal.ZERO;
         }
+
+        digits = digits.replaceAll("[^0-9]", "");
+
+        if (digits.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+
         return new BigDecimal(digits).movePointLeft(2);
+    }
+
+    private String padRight(String s, int n) {
+        if (s.length() >= n)
+            return s;
+        StringBuilder sb = new StringBuilder(n);
+        sb.append(s);
+        while (sb.length() < n)
+            sb.append(' ');
+        return sb.toString();
     }
 }

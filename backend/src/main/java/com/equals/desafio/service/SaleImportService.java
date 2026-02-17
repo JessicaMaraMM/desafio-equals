@@ -56,25 +56,23 @@ public class SaleImportService {
                     continue;
                 }
 
+                if (line.isEmpty()) {
+                    ignored++;
+                    continue;
+                }
+
                 char recordType = line.charAt(0);
                 if (recordType != '1') {
                     ignored++;
                     continue;
                 }
 
-                // Encontrou uma linha de detalhe (tipo 1)
                 detailLines++;
 
-                // Validação de tamanho mínimo
-                if (line.length() < SaleLayout.DETAIL_MIN_LENGTH) {
-                    invalid++;
-                    addError(errors, lineNumber,
-                            "Linha menor que o tamanho mínimo (" + SaleLayout.DETAIL_MIN_LENGTH + ").");
-                    continue;
-                }
-
                 try {
-                    Sale sale = saleParser.parse(line);
+                    String normalized = padRight(line, SaleLayout.DETAIL_MIN_LENGTH);
+
+                    Sale sale = saleParser.parse(normalized);
                     validateSale(sale);
                     toSave.add(sale);
                 } catch (Exception e) {
@@ -134,6 +132,14 @@ public class SaleImportService {
         if (sale.getNetAmount() != null && sale.getNetAmount().compareTo(BigDecimal.ZERO) < 0) {
             throw new IllegalArgumentException("netAmount não pode ser negativo.");
         }
+    }
+
+    private String padRight(String s, int size) {
+        if (s == null)
+            return "";
+        if (s.length() >= size)
+            return s;
+        return String.format("%-" + size + "s", s);
     }
 
     public record ImportError(int line, String reason) {
