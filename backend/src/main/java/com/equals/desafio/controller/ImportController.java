@@ -7,6 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/imports")
+@CrossOrigin(origins = "http://localhost:5173")
 public class ImportController {
 
     private final SaleImportService importService;
