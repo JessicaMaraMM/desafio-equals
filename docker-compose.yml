@@ -1,8 +1,8 @@
-version: "3.8"
-
 services:
+
   db:
     image: postgres:16
+    container_name: equals_db
     environment:
       POSTGRES_DB: equals
       POSTGRES_USER: equals
@@ -11,12 +11,25 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U equals -d equals"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: equals_backend
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/equals
+      SPRING_DATASOURCE_USERNAME: equals
+      SPRING_DATASOURCE_PASSWORD: equals
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
 
 volumes:
   pgdata:
