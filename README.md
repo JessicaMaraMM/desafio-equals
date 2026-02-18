@@ -47,6 +47,13 @@ e consulta de vendas por período através de interface web.
   - Parser
   - Serviço de importação
 
+## Melhorias UX
+- Validação de período no frontend
+- Possibilidade de filtrar apenas com data inicial ou final
+- Mensagens de erro
+- Tratamento de respostas não-JSON da API
+- Formatação de valores monetários no padrão pt-BR
+
 ## Como Executar o Projeto
 
 ### Execução Completa via Docker
@@ -61,17 +68,18 @@ A aplicação ficará disponível em:
 
 http://localhost
 
+
 ### Arquitetura Docker
 - PostgreSQL -> porta 5433 (host)
 - Backend Spring Boot -> porta 8080 (container interno)
 - Frontend React -> servido via Nginx na porta 80
 - Nginx atua como reverve proxy:
   - /api/* -> backend
-  - / -> 
+  - / -> frontend
   
 Fluxo:
 
-1. Usuário acessa hhtp://localhost
+1. Usuário acessa http://localhost
 2. Nginx serve o frontend
 3. Requisições /api são redirecionadas para o backend
 4. Backend comunica com o banco via rede interna Docker
@@ -145,7 +153,6 @@ GET /sales?start=yyyy-MM-dd&end=yyyy-MM-dd
 Retorna lista de vendas dentro do período informado.
 
 ## Decisões Técnicas
-
 - Separação clara entre Controller, Service, Parser e Repository
 - Centralização do layout posicional em classe específica (SaleLayout)
 - Uso de generics no JpaRepository
@@ -157,13 +164,14 @@ Retorna lista de vendas dentro do período informado.
 
 ## Estrutura do Projeto
 
-backend/
-frontend/
-docker-compose.yml
-
-## Próxima Evolução
-
-- Paginação na listagem
-- Melhorias visuais no frontend
+```
+desafio-equals/
+│
+├── backend/
+│
+├── frontend/
+│
+└── docker-compose.yml
+```
 
 Desenvolvido por Jéssica Mara de Morais Machado
