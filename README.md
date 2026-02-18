@@ -23,6 +23,7 @@ e consulta de vendas por período através de interface web.
 ### Infraestrutura
 - Docker
 - Docker Compose
+- Nginx (reverse proxy)
 
 ### Funcionalidades Implementadas
 - Importação de arquivo .txt via API
@@ -31,50 +32,90 @@ e consulta de vendas por período através de interface web.
     - transactionCode obrigatório (32 caracteres)
     - valores não negativos
     - campos obrigatórios
-
 - Persistência em banco PostgreSQL
 - Filtro de vendas por período
 - Listagem de vendas
 - Tratamento de erros de importação
-- Resumo do processamento (total, ignoradas, inválidas, salvas)
+- Resumo do processamento:
+  - total de linhas
+  - linhas de detalhe
+  - ignoradas
+  - inválidas
+  - salvas
+  - lista de erros (linha + motivo)
+- Testes unitários para:
+  - Parser
+  - Serviço de importação
 
 ## Como Executar o Projeto
 
-### 1. Subir Banco de Dados (Docker)
+### Execução Completa via Docker
 
 Na raiz do projeto:
-docker compose up -d
 
-O banco PostgreSQL ficará disponível em:
+```bash
+docker compose up --build
+```
 
+A aplicação ficará disponível em:
+
+http://localhost
+
+### Arquitetura Docker
+- PostgreSQL -> porta 5433 (host)
+- Backend Spring Boot -> porta 8080 (container interno)
+- Frontend React -> servido via Nginx na porta 80
+- Nginx atua como reverve proxy:
+  - /api/* -> backend
+  - / -> 
+  
+Fluxo:
+
+1. Usuário acessa hhtp://localhost
+2. Nginx serve o frontend
+3. Requisições /api são redirecionadas para o backend
+4. Backend comunica com o banco via rede interna Docker
+
+## Execução Manual (Modo Desenvolvimento)
+
+### Banco (Docker)
+
+```bash
+docker compose up -d db
+```
+
+Banco disponível em:
 - Host: localhost
 - Porta: 5433
 - Database: equals
 - Usuário: equals
 - Senha: equals
 
-### 2. Rodar Backend
+### Backend
 
 Na pasta backend:
 
+```bash
 ./mvnw spring-boot:run
+```
 
-A API ficará disponível em:
+API disponível em:
 http://localhost:8080
 
-### 4. Como rodar os testes
+### Rodar os testes
 
-./mvnw test
+Na pasta backend:
 
-### 5. Rodar Frontend
+```bash
+./mvnw.cmd test
+```
 
-Na pasta frontend:
+### Frontend
 
+```bash
 npm install
 npm run dev
-
-Frontend disponível em:
-http://localhost:5174
+```
 
 ## Endpoints Principais
 
@@ -84,7 +125,7 @@ POST /imports
 
 Recebe arquivo .txt via multipart/form-data.
 
-Retorna resumo do processamento:
+Retorno:
 
 ```json
 {
@@ -99,7 +140,7 @@ Retorna resumo do processamento:
 
 ### Filtro por período
 
-GET /sales?startDate=yyyy-MM-dd&endDate=yyyy-MM-dd
+GET /sales?start=yyyy-MM-dd&end=yyyy-MM-dd
 
 Retorna lista de vendas dentro do período informado.
 
@@ -110,10 +151,11 @@ Retorna lista de vendas dentro do período informado.
 - Uso de generics no JpaRepository
 - Validação de dados antes da persistência
 - Tratamento global de exceções
-- Frontend desacoplado do backend
+- Testes unitários focados em regras críticas
+- Frontend desacoplado e consumindo API
+- Aplicação totalmente containerizada
 
 ## Estrutura do Projeto
-
 
 backend/
 frontend/
@@ -121,8 +163,7 @@ docker-compose.yml
 
 ## Próxima Evolução
 
-- Dockerização completa da aplicação (backend + frontend)
-- Build único via Docker Compose
-- Ambiente totalmente isolado
+- Paginação na listagem
+- Melhorias visuais no frontend
 
 Desenvolvido por Jéssica Mara de Morais Machado

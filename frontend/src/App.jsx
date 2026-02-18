@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 export default function App() {
-  const API = "http://localhost:8080";
+  const API = "/api";
 
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
