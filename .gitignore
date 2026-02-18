@@ -1,0 +1,63 @@
+############################
+# SISTEMA / IDE
+############################
+
+# VS Code
+.vscode/
+
+# IntelliJ
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+
+############################
+# BACKEND (Spring / Maven)
+############################
+
+# Maven target
+backend/target/
+
+# Wrapper jar (se existir localmente)
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# Arquivos de build
+backend/*.jar
+backend/*.war
+
+
+############################
+# FRONTEND (React / Vite)
+############################
+
+# Node modules
+frontend/node_modules/
+
+# Build
+frontend/dist/
+
+# Vite cache
+frontend/.vite/
+
+# Variáveis de ambiente
+frontend/.env
+
+
+############################
+# DOCKER
+############################
+
+# Volumes locais
+pgdata/
+
+############################
+# TESTES / TEMP
+############################
+
+coverage/
