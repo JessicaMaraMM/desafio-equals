@@ -16,7 +16,7 @@ export default function App() {
 
   const [loadingImport, setLoadingImport] = useState(false);
   const [loadingSales, setLoadingSales] = useState(false);
-  const [loadingFilter, _setLoadingFilter] = useState(false);
+  const [loadingFilter, setLoadingFilter] = useState(false);
 
   function clearMessages({ clearResult = false } = {}) {
     setError("");
@@ -28,9 +28,7 @@ export default function App() {
     const contentType = response.headers.get("content-type") || "";
     const isJson = contentType.includes("application/json");
 
-    let payload;
-    if (isJson) payload = await response.json();
-    else payload = await response.text();
+    const payload = isJson ? await response.json() : await response.text();
 
     if (!response.ok) {
       const message =
@@ -49,7 +47,9 @@ export default function App() {
     try {
       const response = await fetch(`${API}/sales${params}`);
       const data = await parseResponse(response);
-      setSales(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setSales(list);
+      return list;
     } finally {
       setLoadingSales(false);
     }
@@ -72,12 +72,14 @@ export default function App() {
     clearMessages({ clearResult: true });
 
     if (!file) {
+      setSuccess("");
       setError("Selecione um arquivo .txt para importar.");
       return;
     }
 
     const name = (file.name || "").toLowerCase();
     if (!name.endsWith(".txt")) {
+      setSuccess("");
       setError("O arquivo precisa ser .txt.");
       return;
     }
@@ -99,10 +101,12 @@ export default function App() {
       const saved = data?.saved ?? 0;
       const invalid = data?.invalid ?? 0;
 
+      setError("");
       setSuccess(`Importação concluída. Salvas: ${saved}. Inválidas: ${invalid}.`);
 
-      await fetchSales();
+      await fetchSales("");
     } catch (err) {
+      setSuccess("");
       setError(err?.message || "Erro ao importar arquivo.");
     } finally {
       setLoadingImport(false);
@@ -110,37 +114,67 @@ export default function App() {
   }
 
   async function handleFilter() {
-    setError("");
+    clearMessages();
+    if (loadingFilter) return;
 
-    if (!start && !end) {
-      await fetchSales("");
-      return;
-    }
-
-    if (start && end && start > end) {
-      setError("A data inicial não pode ser maior que a data final.");
-      return;
-    }
-
-    const params = new URLSearchParams();
-    if (start) params.append("start", start);
-    if (end) params.append("end", end);
-
-    const query = `?${params.toString()}`;
+    setLoadingFilter(true);
 
     try {
-      await fetchSales(query);
+      if (!start && !end) {
+        const list = await fetchSales("");
+        setError("");
+        setSuccess(`Exibindo todas as vendas (${list.length}).`);
+        return;
+      }
+
+      if (start && end && start > end) {
+        setSuccess("");
+        setError("A data inicial não pode ser maior que a data final.");
+        return;
+      }
+
+      const params = new URLSearchParams();
+      if (start) params.append("start", start);
+      if (end) params.append("end", end);
+
+      const query = `?${params.toString()}`;
+      const list = await fetchSales(query);
+
+      if (list.length === 0) {
+        setSuccess("");
+        if (start && !end) setError("Nenhuma venda encontrada a partir da data inicial informada.");
+        else if (!start && end) setError("Nenhuma venda encontrada até a data final informada.");
+        else setError("Nenhuma venda encontrada no período informado.");
+      } else {
+        setError("");
+        setSuccess(`Filtro aplicado. Encontradas: ${list.length}.`);
+      }
     } catch (err) {
+      setSuccess("");
       setError(err?.message || "Erro ao filtrar vendas.");
+    } finally {
+      setLoadingFilter(false);
     }
   }
-  
+
   async function handleClearFilter() {
+    if (loadingFilter) return;
+
     clearMessages();
     setStart("");
     setEnd("");
-    await fetchSales();
-    setSuccess("Filtro limpo. Exibindo todas as vendas.");
+
+    setLoadingFilter(true);
+    try {
+      const list = await fetchSales("");
+      setError("");
+      setSuccess(`Filtro limpo. Exibindo todas as vendas (${list.length}).`);
+    } catch (err) {
+      setSuccess("");
+      setError(err?.message || "Erro ao limpar filtro.");
+    } finally {
+      setLoadingFilter(false);
+    }
   }
 
   function moneyBR(value) {
@@ -158,70 +192,74 @@ export default function App() {
     <div style={{ padding: 20 }}>
       <h1>Relatório de Vendas</h1>
 
-      {/* Mensagens */}
       {(error || success) && (
-        <div style={{ marginBottom: 10 }}>
+        <div
+          className={`messages-container${error ? ' error' : ' success'}`}
+        >
           {error && (
-            <p style={{ color: "red" }} role="alert" aria-live="assertive">
+            <span style={{ fontWeight: 600 }} role="alert" aria-live="assertive">
               {error}
-            </p>
+            </span>
           )}
           {success && (
-            <p style={{ color: "green" }} role="status" aria-live="polite">
+            <span style={{ fontWeight: 600 }} role="status" aria-live="polite">
               {success}
-            </p>
+            </span>
           )}
-
           <button
             onClick={() => clearMessages({ clearResult: false })}
             disabled={busy}
-            title="Limpa mensagens de erro/sucesso"
+            title="Fechar"
+            aria-label="Fechar mensagem"
+            className="clear-messages-btn"
           >
-            Limpar mensagens
+            ×
           </button>
         </div>
       )}
 
-      {/* Import */}
+      {/* IMPORTAR */}
       <h2>Importar Arquivo</h2>
       <input
         type="file"
         accept=".txt,text/plain"
         onChange={(e) => setFile(e.target.files?.[0] || null)}
         disabled={busy}
-      />
+      />{" "}
       <button onClick={handleImport} disabled={busy || !file}>
         {loadingImport ? "Importando..." : "Importar"}
       </button>
 
-      {importSummary && (
-        <div style={{ marginTop: 12 }}>
-          <p>
-            <strong>Resumo:</strong> Total: {importSummary.total} | Detalhes:{" "}
-            {importSummary.detail} | Salvas: {importSummary.saved} | Ignoradas:{" "}
-            {importSummary.ignored} | Inválidas: {importSummary.invalid}
-          </p>
+      {
+        importSummary && (
+          <div style={{ marginTop: 12 }}>
+            <p>
+              <strong>Resumo:</strong> Total: {importSummary.total} | Detalhes:{" "}
+              {importSummary.detail} | Salvas: {importSummary.saved} | Ignoradas:{" "}
+              {importSummary.ignored} | Inválidas: {importSummary.invalid}
+            </p>
 
-          {importSummary.errors.length > 0 && (
-            <>
-              <p>
-                <strong>Erros (até o limite retornado):</strong>
-              </p>
-              <ul>
-                {importSummary.errors.map((e, idx) => (
-                  <li key={idx}>
-                    Linha {e.line}: {e.reason}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      )}
+            {importSummary.errors.length > 0 && (
+              <>
+                <p>
+                  <strong>Erros (até o limite retornado):</strong>
+                </p>
+                <ul>
+                  {importSummary.errors.map((e, idx) => (
+                    <li key={idx}>
+                      Linha {e.line}: {e.reason}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )
+      }
 
       <hr />
 
-      {/* Filtro */}
+      {/* FILTRO */}
       <h2>Filtro por Data</h2>
       <label>
         Início:{" "}
@@ -249,54 +287,45 @@ export default function App() {
         disabled={busy || (!start && !end)}
         title="Remove datas e volta a listar tudo"
       >
-        Limpar filtro
+        {loadingFilter ? "Limpando..." : "Limpar filtro"}
       </button>
 
       <hr />
 
-      {/* Vendas */}
+      {/* VENDAS */}
       <h2>Vendas</h2>
-      <button
-        onClick={() =>
-          fetchSales().catch((err) =>
-            setError(err?.message || "Erro ao carregar vendas.")
-          )
-        }
-        disabled={busy}
-      >
-        {loadingSales ? "Carregando..." : "Atualizar"}
-      </button>
+      {loadingSales ? <p>Carregando...</p> : <p>Total: {sales.length}</p>}
 
-      <p>Total: {sales.length}</p>
-
-      {sales.length === 0 ? (
-        <p>Nenhuma venda encontrada.</p>
-      ) : (
-        <table border="1" cellPadding="5">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Estabelecimento</th>
-              <th>Data</th>
-              <th>Hora</th>
-              <th>Bandeira</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sales.map((sale) => (
-              <tr key={sale.id}>
-                <td>{sale.id}</td>
-                <td>{sale.establishmentCode}</td>
-                <td>{sale.eventDate}</td>
-                <td>{sale.eventTime || "—"}</td>
-                <td>{sale.brand}</td>
-                <td>{moneyBR(sale.totalAmount)}</td>
+      {
+        sales.length === 0 ? (
+          <p>Nenhuma venda encontrada.</p>
+        ) : (
+          <table border="1" cellPadding="5">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Estabelecimento</th>
+                <th>Data</th>
+                <th>Hora</th>
+                <th>Bandeira</th>
+                <th>Total</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+            </thead>
+            <tbody>
+              {sales.map((sale) => (
+                <tr key={sale.id}>
+                  <td>{sale.id}</td>
+                  <td>{sale.establishmentCode}</td>
+                  <td>{sale.eventDate}</td>
+                  <td>{sale.eventTime || "—"}</td>
+                  <td>{sale.brand}</td>
+                  <td>{moneyBR(sale.totalAmount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )
+      }
+    </div >
   );
 }

@@ -24,20 +24,25 @@ public class SaleController {
         return saleRepository.save(sale);
     }
 
-    @GetMapping
-    public List<Sale> list(
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end) {
+@GetMapping
+public List<Sale> list(
+    @RequestParam(value = "start", required = false)
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    LocalDate start,
 
-        if (start != null && end != null) {
-            return saleRepository.findByEventDateBetween(start, end);
-        }
-        if (start != null) {
-            return saleRepository.findByEventDateGreaterThanEqual(start);
-        }
-        if (end != null) {
-            return saleRepository.findByEventDateLessThanEqual(end);
-        }
-        return saleRepository.findAll();
+    @RequestParam(value = "end", required = false)
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    LocalDate end
+) {
+    if (start != null && end != null) {
+    return saleRepository.findByEventDateBetween(start, end);
     }
+    if (start != null) {
+    return saleRepository.findByEventDateGreaterThanEqual(start);
+    }
+    if (end != null) {
+    return saleRepository.findByEventDateLessThanEqual(end);
+    }
+    return saleRepository.findAll();
+ }
 }

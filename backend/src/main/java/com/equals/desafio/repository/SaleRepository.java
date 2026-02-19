@@ -9,7 +9,7 @@ import java.util.List;
 public interface SaleRepository extends JpaRepository<Sale, Long> {
     List<Sale> findByEventDateBetween(LocalDate start, LocalDate end);
 
-    List<Sale> findByEventDateGreaterThanEqual(LocalDate startDate);
+    List<Sale> findByEventDateGreaterThanEqual(LocalDate start);
 
-    List<Sale> findByEventDateLessThanEqual(LocalDate endDate);
+    List<Sale> findByEventDateLessThanEqual(LocalDate end);
 }
