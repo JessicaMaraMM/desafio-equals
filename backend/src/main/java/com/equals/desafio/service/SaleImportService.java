@@ -56,11 +56,6 @@ public class SaleImportService {
                     continue;
                 }
 
-                if (line.isEmpty()) {
-                    ignored++;
-                    continue;
-                }
-
                 char recordType = line.charAt(0);
                 if (recordType != '1') {
                     ignored++;
@@ -91,8 +86,10 @@ public class SaleImportService {
     }
 
     private void addError(List<ImportError> errors, int lineNumber, String reason) {
-        if (errors.size() >= MAX_ERRORS_RETURNED)
+
+        if (errors.size() >= MAX_ERRORS_RETURNED) {
             return;
+        }
 
         String safeReason = (reason == null || reason.isBlank())
                 ? "Erro desconhecido."
@@ -102,8 +99,9 @@ public class SaleImportService {
     }
 
     private void validateSale(Sale sale) {
-        if (sale == null)
+        if (sale == null) {
             throw new IllegalArgumentException("Venda nula após parse.");
+        }
 
         if (sale.getEstablishmentCode() == null || sale.getEstablishmentCode().trim().isEmpty()) {
             throw new IllegalArgumentException("establishmentCode obrigatório.");
@@ -135,10 +133,12 @@ public class SaleImportService {
     }
 
     private String padRight(String s, int size) {
-        if (s == null)
+        if (s == null) {
             return "";
-        if (s.length() >= size)
+        }
+        if (s.length() >= size) {
             return s;
+        }
         return String.format("%-" + size + "s", s);
     }
 

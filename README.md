@@ -73,7 +73,7 @@ http://localhost
 - PostgreSQL -> porta 5433 (host)
 - Backend Spring Boot -> porta 8080 (container interno)
 - Frontend React -> servido via Nginx na porta 80
-- Nginx atua como reverve proxy:
+- Nginx atua como reverse proxy:
   - /api/* -> backend
   - / -> frontend
   

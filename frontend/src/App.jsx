@@ -16,7 +16,7 @@ export default function App() {
 
   const [loadingImport, setLoadingImport] = useState(false);
   const [loadingSales, setLoadingSales] = useState(false);
-  const [loadingFilter, setLoadingFilter] = useState(false);
+  const [loadingFilter, _setLoadingFilter] = useState(false);
 
   function clearMessages({ clearResult = false } = {}) {
     setError("");
@@ -113,7 +113,6 @@ export default function App() {
     setError("");
 
     if (!start && !end) {
-
       await fetchSales("");
       return;
     }
